@@ -2,46 +2,21 @@
 <html lang="pt-br">
 <head>
 <meta charset="utf-8" />
-<title>PDV Bitcoin Local — Multi-lojista (Real)</title>
+<title>PDV Bitcoin → USDT (Local / Real)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-<style>
-  *{box-sizing:border-box} body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto; background:#f5f7fb;margin:0;padding:24px;color:#111}
-  .wrap{max-width:920px;margin:0 auto}
-  header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:18px}
-  .brand{font-weight:700;font-size:18px}
-  .card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(15,23,42,0.06);margin-bottom:16px}
-  .row{display:flex;gap:12px}
-  input,select,button,textarea{font-size:15px;padding:10px;border-radius:8px;border:1px solid #e3e7ee}
-  input[readonly]{background:#f7fafc}
-  .left{flex:1}
-  .right{width:360px}
-  .qr{display:flex;flex-direction:column;align-items:center;gap:10px}
-  img.qrimg{width:260px;height:260px;object-fit:cover;border-radius:10px;border:1px solid #eee;padding:8px;background:#fff}
-  .status{font-weight:600;margin-top:8px}
-  table{width:100%;border-collapse:collapse;margin-top:12px}
-  th,td{padding:10px;border-bottom:1px solid #f0f2f6;text-align:center;font-size:13px}
-  th{color:#415165;font-weight:600;background:#fbfcfe}
-  small.note{color:#6b7280}
-  .btn {background:#0ea5a4;color:#fff;border:0;padding:10px;border-radius:8px;cursor:pointer}
-  .btn.warn{background:#f97316}
-  .config{display:flex;gap:8px;align-items:center}
-  .muted{color:#6b7280;font-size:13px}
-  @media(max-width:900px){.row{flex-direction:column}.right{width:100%}.qr img{width:220px;height:220px}}
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="brand">PDV Bitcoin → USDT (Local / Real)</div>
-    <div>
-      <small class="muted">Multi-lojista (use ?lojista=nome)</small>
-    </div>
+    <div><small class="muted">Multi-lojista (use ?lojista=nome)</small></div>
   </header>
 
   <!-- Config / identificação lojista -->
   <section class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+    <div class="flex-space">
       <div>
         <div style="font-weight:700">Lojista</div>
         <div id="lojistaName" class="muted">— nenhum —</div>
@@ -64,7 +39,7 @@
         <option value="ERC20">USDT ERC20</option>
       </select>
 
-      <div style="margin-top:12px;display:flex;gap:8px">
+      <div class="btn-group">
         <button id="generate" class="btn">Gerar QR & Iniciar monitor</button>
         <button id="forceCheck" class="btn warn" style="display:none">Forçar verificação</button>
       </div>
@@ -100,318 +75,43 @@
       <thead>
         <tr><th>ID</th><th>USD</th><th>BTC</th><th>Endereço BTC</th><th>Status</th><th>TXID</th></tr>
       </thead>
-      <tbody id="historyBody">
-      </tbody>
+      <tbody id="historyBody"></tbody>
     </table>
   </section>
 
-  <!-- Config modal (simples) -->
+  <!-- Config modal -->
   <section id="configModal" class="card" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div class="flex-space" style="margin-bottom:10px">
       <div style="font-weight:700">Configurações do lojista</div>
       <button id="closeConfig" class="btn warn">Fechar</button>
     </div>
 
-    <div style="display:grid;gap:10px">
+    <div class="grid-gap">
       <label class="muted">Nome do lojista (id usado na URL)</label>
       <input id="cfgName" placeholder="ex: loja-sede" />
 
-      <label class="muted">Endereço BTC de recebimento (use seu endereço ou endereço de depósito de exchange)</label>
+      <label class="muted">Endereço BTC de recebimento</label>
       <input id="cfgBtcAddress" placeholder="ex: bc1q..." />
 
-      <label class="muted">Endereço USDT destino (onde quer receber USDT após swap)</label>
+      <label class="muted">Endereço USDT destino</label>
       <input id="cfgUsdtAddress" placeholder="ex: TRON/Ethereum address" />
 
-      <label class="muted">Webhook para automação do swap (opcional)</label>
+      <label class="muted">Webhook para swap (opcional)</label>
       <input id="cfgWebhook" placeholder="https://meu-backend.example.com/swap" />
 
-      <label class="muted">PIN local (protege abertura de config no navegador)</label>
+      <label class="muted">PIN local</label>
       <input id="cfgPin" placeholder="4 dígitos — salva localmente" />
 
-      <div style="display:flex;gap:8px;margin-top:8px">
+      <div class="btn-group" style="margin-top:8px">
         <button id="saveConfig" class="btn">Salvar</button>
         <button id="clearConfig" class="btn warn">Limpar configuração</button>
       </div>
-
-      <small class="note">As configurações são salvas localmente no navegador (localStorage) apenas para o lojista atual.</small>
+      <small class="note">Configurações salvas localmente apenas para este lojista.</small>
     </div>
   </section>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-<script>
-/*
-  PDV local real (multi-lojista)
-  - Usa param ?lojista=nome para isolar localStorage
-  - Detecta pagamentos on-chain via Blockstream API (mainnet)
-  - Se webhook configurado, envia POST com detalhes do pagamento.
-*/
-
-const params = new URLSearchParams(location.search);
-const lojistaId = params.get('lojista') || 'default-lojista';
-const storagePrefix = 'pdv_local_'; 
-const cfgKey = storagePrefix + 'cfg_' + lojistaId;
-const histKey = storagePrefix + 'hist_' + lojistaId;
-
-const cfgModal = document.getElementById('configModal');
-const openConfig = document.getElementById('openConfig');
-const closeConfig = document.getElementById('closeConfig');
-const saveConfig = document.getElementById('saveConfig');
-const clearConfig = document.getElementById('clearConfig');
-
-const cfgName = document.getElementById('cfgName');
-const cfgBtcAddress = document.getElementById('cfgBtcAddress');
-const cfgUsdtAddress = document.getElementById('cfgUsdtAddress');
-const cfgWebhook = document.getElementById('cfgWebhook');
-const cfgPin = document.getElementById('cfgPin');
-
-const lojistaNameEl = document.getElementById('lojistaName');
-const amountUSD = document.getElementById('amountUSD');
-const usdtNetwork = document.getElementById('usdtNetwork');
-const generateBtn = document.getElementById('generate');
-const qrcodeImg = document.getElementById('qrcodeImg');
-const btcUri = document.getElementById('btcUri');
-const statusEl = document.getElementById('status');
-const usdtMsg = document.getElementById('usdtMsg');
-const historyBody = document.getElementById('historyBody');
-const lastInfo = document.getElementById('lastInfo');
-const txInfo = document.getElementById('txInfo');
-const forceCheck = document.getElementById('forceCheck');
-
-let cfg = loadConfig();
-let history = loadHistory();
-let currentPayment = null;
-let monitorInterval = null;
-
-// Init UI
-lojistaNameEl.textContent = lojistaId;
-renderHistory();
-populateConfigUI();
-
-// Open config — require PIN if exists
-openConfig.addEventListener('click', () => {
-  const storedPin = cfg?.pin;
-  if (storedPin) {
-    const input = prompt('Digite o PIN local do lojista para abrir configurações:');
-    if (!input || input !== storedPin) return alert('PIN incorreto.');
-  }
-  showConfig();
-});
-closeConfig.addEventListener('click', hideConfig);
-saveConfig.addEventListener('click', () => {
-  const name = cfgName.value.trim() || lojistaId;
-  const btc = cfgBtcAddress.value.trim();
-  const usdt = cfgUsdtAddress.value.trim();
-  const webhook = cfgWebhook.value.trim();
-  const pin = cfgPin.value.trim();
-  cfg = { name, btc, usdt, webhook, pin };
-  localStorage.setItem(cfgKey, JSON.stringify(cfg));
-  hideConfig();
-  populateConfigUI();
-});
-clearConfig.addEventListener('click', () => {
-  if (!confirm('Remover configuração local do lojista?')) return;
-  localStorage.removeItem(cfgKey);
-  cfg = {};
-  populateConfigUI();
-});
-
-// Generate payment
-generateBtn.addEventListener('click', async () => {
-  if (!cfg || !cfg.btc) return alert('Configure o endereço BTC do lojista (botão Configurar lojista).');
-  const usd = parseFloat(amountUSD.value);
-  if (!usd || usd <= 0) return alert('Digite um valor em USD válido.');
-
-  // pega preco BTC
-  const btcPrice = await getBTCPriceUSD();
-  const amountBTC = (usd / btcPrice).toFixed(8);
-
-  const id = Date.now().toString();
-  const btcAddress = cfg.btc;
-  const paymentURI = `bitcoin:${btcAddress}?amount=${amountBTC}`;
-
-  // gerar qr
-  try {
-    const url = await QRCode.toDataURL(paymentURI, { width: 600 });
-    qrcodeImg.src = url;
-    btcUri.value = paymentURI;
-  } catch (e) {
-    console.error(e);
-  }
-
-  statusEl.textContent = 'Aguardando pagamento on-chain...';
-  usdtMsg.textContent = '';
-
-  currentPayment = {
-    id, usd, amountBTC, btcAddress, status: 'pending', timestamp: Date.now(), txid: null, usdtNetwork: usdtNetwork.value, usdtDestination: cfg.usdt || ''
-  };
-
-  history.unshift(currentPayment);
-  saveHistory();
-  renderHistory();
-  lastInfo.textContent = `ID ${id} — ${usd} USD ≈ ${amountBTC} BTC`;
-
-  // start polling blockchain for payment to address (simple approach: check balance >= amount)
-  startMonitor(btcAddress, parseFloat(amountBTC), currentPayment);
-  forceCheck.style.display = 'inline-block';
-});
-
-// Force check
-forceCheck.addEventListener('click', () => {
-  if (currentPayment) checkPaymentNow(currentPayment);
-});
-
-
-// --- storage helpers ---
-function loadConfig() {
-  const raw = localStorage.getItem(cfgKey);
-  if (!raw) return {};
-  try { return JSON.parse(raw); } catch { return {}; }
-}
-function loadHistory() {
-  const raw = localStorage.getItem(histKey);
-  if (!raw) return [];
-  try { return JSON.parse(raw); } catch { return []; }
-}
-function saveHistory() {
-  localStorage.setItem(histKey, JSON.stringify(history));
-  renderHistory();
-}
-
-// --- UI helpers ---
-function populateConfigUI() {
-  cfg = loadConfig();
-  cfgName.value = cfg?.name || lojistaId;
-  cfgBtcAddress.value = cfg?.btc || '';
-  cfgUsdtAddress.value = cfg?.usdt || '';
-  cfgWebhook.value = cfg?.webhook || '';
-  cfgPin.value = cfg?.pin || '';
-  lojistaNameEl.textContent = cfg?.name || lojistaId;
-}
-function showConfig(){ cfgModal.style.display='block'; }
-function hideConfig(){ cfgModal.style.display='none'; }
-
-function renderHistory(){
-  historyBody.innerHTML = '';
-  history.forEach(h=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${h.id}</td>
-                    <td>${h.usd}</td>
-                    <td>${h.amountBTC}</td>
-                    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${h.btcAddress}</td>
-                    <td>${h.status}</td>
-                    <td style="font-size:12px">${h.txid?(`<a href="https://blockstream.info/tx/${h.txid}" target="_blank">${h.txid.slice(0,12)}...</a>`):'-'}</td>`;
-    historyBody.appendChild(tr);
-  });
-}
-
-// --- blockchain & price functions ---
-async function getBTCPriceUSD(){
-  try {
-    const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    const j = await res.json();
-    return j.bitcoin.usd;
-  } catch (e) {
-    console.warn('CoinGecko falhou, fallback 30000', e);
-    return 30000;
-  }
-}
-
-// Blockstream API: https://blockstream.info/api
-// Check total received (satoshis) for an address: /address/:address
-// We'll use /address/:address/txs or /address/:address/utxo to sum utxos
-async function getReceivedBTC(address){
-  try {
-    // utxos returns array with value in satoshis
-    const resp = await fetch(`https://blockstream.info/api/address/${address}/utxo`);
-    if (!resp.ok) throw new Error('Blockstream error');
-    const utxos = await resp.json();
-    const totalSats = utxos.reduce((s, u) => s + (u.value||0), 0);
-    return totalSats / 1e8;
-  } catch (e) {
-    console.error('Erro ao consultar Blockstream', e);
-    return 0;
-  }
-}
-
-// start polling
-function startMonitor(address, amountBTC, payment){
-  if (monitorInterval) clearInterval(monitorInterval);
-  monitorInterval = setInterval(()=>checkPaymentNow(payment), 5000);
-  // run immediate
-  checkPaymentNow(payment);
-}
-
-async function checkPaymentNow(payment){
-  if (!payment) return;
-  statusEl.textContent = 'Verificando blockchain...';
-  const received = await getReceivedBTC(payment.btcAddress);
-  if (received >= parseFloat(payment.amountBTC) - 0.00000001) {
-    payment.status = 'confirmed';
-    // To show TXID, we can fetch last txs for address; pick latest that covers value (simple)
-    try {
-      const resp = await fetch(`https://blockstream.info/api/address/${payment.btcAddress}/txs`);
-      const txs = await resp.json();
-      // find tx where total_output_to_address >= amount
-      let foundTx = null;
-      for (const tx of txs) {
-        // fetch raw tx details
-        const raw = await fetch(`https://blockstream.info/api/tx/${tx.txid}/hex`); // not used, but we can link tx
-        // assume tx.txid is the one
-        foundTx = tx.txid;
-        break;
-      }
-      payment.txid = foundTx || null;
-    } catch(e){ console.warn('Não obteve TXID', e); }
-
-    saveHistory();
-    statusEl.textContent = 'Pagamento confirmado on-chain!';
-    usdtMsg.textContent = `Enviar ${payment.usd} USDT para ${cfg?.usdt || '(não configurado)'}`;
-
-    // stop monitor
-    if (monitorInterval) { clearInterval(monitorInterval); monitorInterval = null; }
-
-    // trigger webhook if configured
-    if (cfg && cfg.webhook) {
-      triggerWebhook(cfg.webhook, payment).then(ok=>{
-        console.log('webhook trigger ok', ok);
-      }).catch(err=>{
-        console.warn('webhook falhou', err);
-      });
-    }
-
-  } else {
-    statusEl.textContent = `Aguardando pagamento — recebido: ${received} BTC`;
-  }
-}
-
-// webhook trigger
-async function triggerWebhook(url, payment){
-  // POST payload: lojistaId, payment details, cfg.usdt (destination), etc.
-  const payload = {
-    lojistaId,
-    payment: {
-      id: payment.id,
-      usd: payment.usd,
-      amountBTC: payment.amountBTC,
-      btcAddress: payment.btcAddress,
-      txid: payment.txid || null,
-      timestamp: payment.timestamp
-    },
-    usdtDestination: cfg?.usdt || null,
-    network: payment.usdtNetwork || null
-  };
-
-  // Important: webhook should be HTTPS and implement authentication (e.g., HMAC). We don't handle secrets here.
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
-  });
-  return resp.ok ? await resp.json().catch(()=>({ok:true})) : Promise.reject(new Error('webhook response not ok'));
-}
-
-</script>
+<script src="app.js"></script>
 </body>
 </html>
