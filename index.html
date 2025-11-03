@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>PDV Bitcoin → USDT (Demo)</title>
+<style>
+  body { font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; }
+  input, button { padding: 10px; margin: 5px 0; width: 100%; }
+  img { display: block; margin: 20px auto; width: 250px; }
+  #status { text-align: center; margin-top: 10px; font-weight: bold; }
+</style>
+</head>
+<body>
+<h2>PDV Bitcoin → USDT (Demo)</h2>
+<input type="number" id="amountUSD" placeholder="Valor em USD" />
+<button id="createPayment">Gerar QR Code</button>
+
+<img id="qrcode" src="" alt="QR Code" />
+<div id="status"></div>
+<div id="usdtReceived"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script>
+let currentPaymentId = null;
+
+async function getBTCPriceUSD() {
+    try {
+        const resp = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+        const data = await resp.json();
+        return data.bitcoin.usd;
+    } catch {
+        return 30000; // fallback
+    }
+}
+
+document.getElementById('createPayment').addEventListener('click', async () => {
+    const amountUSD = parseFloat(document.getElementById('amountUSD').value);
+    if (!amountUSD) return alert('Digite um valor válido');
+
+    const btcPrice = await getBTCPriceUSD();
+    const amountBTC = (amountUSD / btcPrice).toFixed(8);
+
+    currentPaymentId = Date.now().toString();
+    const btcAddress = 'bc1qexampleaddress0000000000000000000';
+    const paymentURI = `bitcoin:${btcAddress}?amount=${amountBTC}`;
+
+    QRCode.toDataURL(paymentURI, { width: 250 }, function (err, url) {
+        document.getElementById('qrcode').src = url;
+    });
+
+    document.getElementById('status').textContent = 'Aguardando pagamento...';
+    document.getElementById('usdtReceived').textContent = '';
+
+    // Simula pagamento + swap após 5 segundos
+    setTimeout(() => {
+        document.getElementById('status').textContent = 'Pagamento confirmado!';
+        document.getElementById('usdtReceived').textContent = `Recebido ~${amountUSD} USDT`;
+    }, 5000);
+});
+</script>
+</body>
+</html>
