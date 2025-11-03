@@ -2,26 +2,71 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>PDV Bitcoin → USDT (Demo)</title>
+<title>PDV Bitcoin → USDT Avançado</title>
 <style>
-  body { font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; }
-  input, button { padding: 10px; margin: 5px 0; width: 100%; }
+  body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+  input, button, select { padding: 10px; margin: 5px 0; width: 100%; }
   img { display: block; margin: 20px auto; width: 250px; }
   #status { text-align: center; margin-top: 10px; font-weight: bold; }
+  table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
 </style>
 </head>
 <body>
-<h2>PDV Bitcoin → USDT (Demo)</h2>
+<h2>PDV Bitcoin → USDT (Avançado)</h2>
+
 <input type="number" id="amountUSD" placeholder="Valor em USD" />
+<select id="usdtNetwork">
+  <option value="TRC20">USDT TRC20</option>
+  <option value="ERC20">USDT ERC20</option>
+</select>
 <button id="createPayment">Gerar QR Code</button>
 
 <img id="qrcode" src="" alt="QR Code" />
 <div id="status"></div>
 <div id="usdtReceived"></div>
 
+<h3>Histórico de pagamentos</h3>
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>USD</th>
+      <th>BTC</th>
+      <th>Rede USDT</th>
+      <th>Status</th>
+      <th>USDT Recebido</th>
+    </tr>
+  </thead>
+  <tbody id="historyBody"></tbody>
+</table>
+
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <script>
-let currentPaymentId = null;
+const historyKey = 'pdvBitcoinHistory';
+let payments = JSON.parse(localStorage.getItem(historyKey) || '[]');
+
+function saveHistory() {
+    localStorage.setItem(historyKey, JSON.stringify(payments));
+    renderHistory();
+}
+
+function renderHistory() {
+    const tbody = document.getElementById('historyBody');
+    tbody.innerHTML = '';
+    payments.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.id}</td>
+          <td>${p.amountUSD}</td>
+          <td>${p.amountBTC}</td>
+          <td>${p.usdtNetwork}</td>
+          <td>${p.status}</td>
+          <td>${p.usdtReceived}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
 
 async function getBTCPriceUSD() {
     try {
@@ -35,12 +80,13 @@ async function getBTCPriceUSD() {
 
 document.getElementById('createPayment').addEventListener('click', async () => {
     const amountUSD = parseFloat(document.getElementById('amountUSD').value);
+    const usdtNetwork = document.getElementById('usdtNetwork').value;
     if (!amountUSD) return alert('Digite um valor válido');
 
     const btcPrice = await getBTCPriceUSD();
     const amountBTC = (amountUSD / btcPrice).toFixed(8);
 
-    currentPaymentId = Date.now().toString();
+    const id = Date.now().toString();
     const btcAddress = 'bc1qexampleaddress0000000000000000000';
     const paymentURI = `bitcoin:${btcAddress}?amount=${amountBTC}`;
 
@@ -51,12 +97,24 @@ document.getElementById('createPayment').addEventListener('click', async () => {
     document.getElementById('status').textContent = 'Aguardando pagamento...';
     document.getElementById('usdtReceived').textContent = '';
 
+    const payment = {
+        id, amountUSD, amountBTC, usdtNetwork, status: 'pending', usdtReceived: 0
+    };
+    payments.push(payment);
+    saveHistory();
+
     // Simula pagamento + swap após 5 segundos
     setTimeout(() => {
+        payment.status = 'confirmed';
+        payment.usdtReceived = amountUSD; // simulação 1:1
+        saveHistory();
         document.getElementById('status').textContent = 'Pagamento confirmado!';
-        document.getElementById('usdtReceived').textContent = `Recebido ~${amountUSD} USDT`;
+        document.getElementById('usdtReceived').textContent = `Recebido ~${payment.usdtReceived} ${usdtNetwork}`;
     }, 5000);
 });
+
+// Renderiza histórico ao carregar
+renderHistory();
 </script>
 </body>
 </html>
